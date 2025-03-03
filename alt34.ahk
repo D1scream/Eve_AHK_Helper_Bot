@@ -169,12 +169,57 @@ PressV:
     Send, {v up}    
 return
 
+toggleStatus := false
+
 Numpad8::  
-    clicks := []
-    Tooltip, Clicks cleared
+    toggleStatus := !toggleStatus
+    if (toggleStatus) {
+        SetTimer, UpdateStatus, 1000
+        Tooltip, Status Display Enabled, 100, 50
+    } else {
+        SetTimer, UpdateStatus, Off
+        Tooltip
+    }
     SetTimer, RemoveTooltip, -2000
 return
 
+
 RemoveTooltip:
     Tooltip
+return
+
+UpdateStatus:
+    if (!toggleStatus)
+        return
+
+    statusText := ""
+
+    ; Активные процессы
+    if (toggleRecording)
+        statusText .= "Recording Clicks`n"
+    if (togglePixelCheck)
+        statusText .= "Pixel Check Active`n"
+    if (toggleClickReplay)
+        statusText .= "Replaying Clicks`n"
+    if (toggleF3F4)
+        statusText .= "F3-F4 Active`n"
+    if (toggleV)
+        statusText .= "V Pressing Active`n"
+
+    ; Сохранённый пиксель
+    if (savedX != 0 && savedY != 0)
+        statusText .= "Saved Pixel: (" savedX ", " savedY ") Color: " savedColor "`n"
+
+    ; Сохранённые клики
+    if (clicks.MaxIndex() > 0) {
+        statusText .= "Recorded Clicks:`n"
+        Loop, % clicks.MaxIndex() {
+            statusText .= "#" A_Index ": (" clicks[A_Index][1] ", " clicks[A_Index][2] ")`n"
+        }
+    }
+
+    if (statusText != "")
+        Tooltip, %statusText%, 200, 30
+    else
+        Tooltip
 return
