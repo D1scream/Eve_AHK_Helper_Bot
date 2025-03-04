@@ -5,11 +5,15 @@ toggleF3F4 := false
 toggleRecording := false
 toggleClickReplay := false
 togglePixelCheck := false
+togglePixel2Check := false  ; Флаг для второй точки
 
 clicks := []
 savedX := 0  
 savedY := 0
 savedColor := 0
+savedX2 := 0  ; Координаты второй точки
+savedY2 := 0
+savedColor2 := 0  ; Цвет второй точки
 
 percentThreshold := 0.30  ; Порог чувствительности цвета
 
@@ -26,19 +30,12 @@ CheckColorDifference(color1, color2) {
     return [Abs(r1 - r2), Abs(g1 - g2), Abs(b1 - b2), r1, g1, b1, r2, g2, b2]
 }
 
-PixelReturnedToOriginal() {
-    PixelGetColor, currentColor, %savedX%, %savedY%, RGB
-    diff := CheckColorDifference(savedColor, currentColor)
-    return (diff[1] < diff[4] * percentThreshold) 
-        and (diff[2] < diff[5] * percentThreshold) 
-        and (diff[3] < diff[6] * percentThreshold)
-}
 
 ; ====== ГОРЯЧИЕ КЛАВИШИ ======
 Numpad1::  
     MouseGetPos, savedX, savedY
     PixelGetColor, savedColor, %savedX%, %savedY%, RGB
-    Tooltip, Pixel Saved: %savedX%. %savedY%`nColor: %savedColor%
+    Tooltip, Pixel Saved: %savedX%. %savedY%nColor: %savedColor%
     SetTimer, RemoveTooltip, -2000
 return
 
@@ -84,10 +81,33 @@ CheckPixel:
     }
 return
 
+ReplayClicks:
+    if (clicks.MaxIndex() > 0) {
+        Loop, % clicks.MaxIndex() {
+            clickX := clicks[A_Index][1]
+            clickY := clicks[A_Index][2]
+            Tooltip, Click #%A_Index%: %clickX%, %clickY%
+            MouseMove, %clickX%, %clickY%, 0
+            Click, %clickX%, %clickY%
+            Sleep, 500
+        }
+
+        SetTimer, RemoveTooltip, -2000
+        toggleClickReplay := false
+        SetTimer, ReplayClicks, Off  
+
+    } else {
+        Tooltip, No recorded clicks
+        SetTimer, RemoveTooltip, -2000
+        toggleClickReplay := false
+        SetTimer, ReplayClicks, Off  
+    }
+return
+
 Numpad4::  
     if (clicks.MaxIndex() > 0) {
         toggleClickReplay := true
-        SetTimer, ReplayClicks, 1000
+        Gosub, ReplayClicks
         Tooltip, Playing recorded clicks...
     } else {
         Tooltip, No recorded clicks
@@ -104,32 +124,7 @@ Numpad5::
     SetTimer, RemoveTooltip, -2000
 return
 
-ReplayClicks:
-    if (clicks.MaxIndex() > 0) {
-        Loop, % clicks.MaxIndex() {
-            clickX := clicks[A_Index][1]
-            clickY := clicks[A_Index][2]
-            Tooltip, Click #%A_Index%: %clickX%, %clickY%
-            MouseMove, %clickX%, %clickY%, 0
-            Click, %clickX%, %clickY%
-            Sleep, 500
-        }
-        
-        SetTimer, RemoveTooltip, -2000
-        toggleClickReplay := false
-        SetTimer, ReplayClicks, Off  
 
-        if (PixelReturnedToOriginal()) {
-            Tooltip, Pixel returned to initial state. Resuming color check...
-            SetTimer, CheckPixel, 1000
-        }
-    } else {
-        Tooltip, No recorded clicks
-        SetTimer, RemoveTooltip, -2000
-        toggleClickReplay := false
-        SetTimer, ReplayClicks, Off  
-    }
-return
 
 Numpad6::  
     toggleF3F4 := !toggleF3F4
@@ -184,6 +179,84 @@ Numpad8::
 return
 
 
+
+Numpad9::  ; Запуск проверки второго пикселя
+    togglePixel2Check := !togglePixel2Check
+    if (togglePixel2Check) {
+        SetTimer, CheckPixel2, 1000
+        Tooltip, Second Pixel check enabled
+    } else {
+        SetTimer, CheckPixel2, Off
+        Tooltip, Second Pixel check disabled
+    }
+    SetTimer, RemoveTooltip, -2000
+return
+
+GetAverageColor(x, y) {
+    totalR := 0
+    totalG := 0
+    totalB := 0
+    pixelCount := 0
+
+	Loop, 5 {
+		yOffset := y + A_Index - 1
+		Loop, 5 {
+			innerIndex := A_Index       ; Правильный индекс для внутреннего цикла
+			xOffset := x + innerIndex - 1  ; Используем innerIndex вместо A_Index
+
+			PixelGetColor, currentColor, %xOffset%, %yOffset%, RGB
+			if (!ErrorLevel) {
+				r := (currentColor >> 16) & 0xFF
+				g := (currentColor >> 8) & 0xFF
+				b := currentColor & 0xFF
+
+				totalR += r
+				totalG += g
+				totalB += b
+				pixelCount++
+			}
+		}
+	}
+
+    ; Вычисляем усреднённый цвет
+    if (pixelCount > 0) {
+        avgR := totalR // pixelCount
+        avgG := totalG // pixelCount
+        avgB := totalB // pixelCount
+
+        ; Возвращаем усреднённый цвет в формате RGB
+        return (avgR << 16) | (avgG << 8) | avgB
+    } else {
+        return 0  ; Если не удалось получить цвет (например, ошибка при чтении)
+    }
+}
+
+CheckPixel2:
+    ; Получаем усреднённый цвет для области 10x10
+    currentColor2 := GetAverageColor(savedX2, savedY2)
+    diff := CheckColorDifference(savedColor2, currentColor2)
+    if ((diff[1] >= diff[4] * percentThreshold) 
+     or (diff[2] >= diff[5] * percentThreshold) 
+     or (diff[3] >= diff[6] * percentThreshold)) {
+        Tooltip, Second pixel changed! Beep!
+        SoundBeep, 659, 500  ; Издаем звуковой сигнал
+        SetTimer, RemoveTooltip, -2000
+    }
+return
+
+NumpadSub::  ; Запись цвета второго пикселя из уже сохранённых координат
+    ; Получаем усреднённый цвет для области 10x10
+    savedColor2 := GetAverageColor(savedX2, savedY2)
+    Tooltip, Second Pixel Color: %savedColor2%
+    SetTimer, RemoveTooltip, -2000
+return
+
+NumpadAdd::  ; Запись координат второго пикселя
+    MouseGetPos, savedX2, savedY2
+    Tooltip, Second Pixel Coordinates: (%savedX2%. %savedY2%)
+    SetTimer, RemoveTooltip, -2000
+return
+
 RemoveTooltip:
     Tooltip
 return
@@ -194,11 +267,14 @@ UpdateStatus:
 
     statusText := ""
 
-    ; Активные процессы
+    ; Заголовок для активных процессов
+    statusText .= "=== Active Processes ===`n"
     if (toggleRecording)
         statusText .= "Recording Clicks`n"
     if (togglePixelCheck)
         statusText .= "Pixel Check Active`n"
+    if (togglePixel2Check)
+        statusText .= "Second Pixel Check Active`n"
     if (toggleClickReplay)
         statusText .= "Replaying Clicks`n"
     if (toggleF3F4)
@@ -206,20 +282,25 @@ UpdateStatus:
     if (toggleV)
         statusText .= "V Pressing Active`n"
 
-    ; Сохранённый пиксель
+    ; Разделитель
+    statusText .= "`n"
+
+    ; Заголовок для сохранённых пикселей
+    statusText .= "=== Saved Pixels ===`n"
     if (savedX != 0 && savedY != 0)
         statusText .= "Saved Pixel: (" savedX ", " savedY ") Color: " savedColor "`n"
+    if (savedX2 != 0 && savedY2 != 0)
+        statusText .= "Saved Pixel 2: (" savedX2 ", " savedY2 ") Color: " savedColor2 "`n"
 
-    ; Сохранённые клики
-    if (clicks.MaxIndex() > 0) {
-        statusText .= "Recorded Clicks:`n"
-        Loop, % clicks.MaxIndex() {
-            statusText .= "#" A_Index ": (" clicks[A_Index][1] ", " clicks[A_Index][2] ")`n"
-        }
-    }
+    ; Проверка записанных кликов
+    if (clicks.MaxIndex() > 0)
+        statusText .= "`nRecorded Clicks: " clicks.MaxIndex() "`n"
 
+    ; Если есть статус, показываем тултип
     if (statusText != "")
         Tooltip, %statusText%, 200, 30
     else
-        Tooltip
+        Tooltip  ; Если нет информации, скрыть тултип
 return
+
+;work
