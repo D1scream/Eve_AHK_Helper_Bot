@@ -180,14 +180,14 @@ return
 
 
 
-Numpad9::  ; Запуск проверки второго пикселя
+Numpad9::  ; Запуск проверки пеленгатора
     togglePixel2Check := !togglePixel2Check
     if (togglePixel2Check) {
         SetTimer, CheckPixel2, 1000
-        Tooltip, Second Pixel check enabled
+        Tooltip, Pelengator check enabled
     } else {
         SetTimer, CheckPixel2, Off
-        Tooltip, Second Pixel check disabled
+        Tooltip, Pelengator check disabled
     }
     SetTimer, RemoveTooltip, -2000
 return
@@ -201,8 +201,8 @@ GetAverageColor(x, y) {
 	Loop, 5 {
 		yOffset := y + A_Index - 1
 		Loop, 5 {
-			innerIndex := A_Index       ; Правильный индекс для внутреннего цикла
-			xOffset := x + innerIndex - 1  ; Используем innerIndex вместо A_Index
+			innerIndex := A_Index
+			xOffset := x + innerIndex - 1 
 
 			PixelGetColor, currentColor, %xOffset%, %yOffset%, RGB
 			if (!ErrorLevel) {
@@ -227,12 +227,11 @@ GetAverageColor(x, y) {
         ; Возвращаем усреднённый цвет в формате RGB
         return (avgR << 16) | (avgG << 8) | avgB
     } else {
-        return 0  ; Если не удалось получить цвет (например, ошибка при чтении)
+        return 0
     }
 }
 
 CheckPixel2:
-    ; Получаем усреднённый цвет для области 10x10
     currentColor2 := GetAverageColor(savedX2, savedY2)
     diff := CheckColorDifference(savedColor2, currentColor2)
     if ((diff[1] >= diff[4] * percentThreshold) 
@@ -244,14 +243,13 @@ CheckPixel2:
     }
 return
 
-NumpadSub::  ; Запись цвета второго пикселя из уже сохранённых координат
-    ; Получаем усреднённый цвет для области 10x10
+NumpadSub::  ; Запись цвета пеленгатора из уже сохранённых координат
     savedColor2 := GetAverageColor(savedX2, savedY2)
     Tooltip, Second Pixel Color: %savedColor2%
     SetTimer, RemoveTooltip, -2000
 return
 
-NumpadAdd::  ; Запись координат второго пикселя
+NumpadAdd::  ; Запись координат для пеленгатора
     MouseGetPos, savedX2, savedY2
     Tooltip, Second Pixel Coordinates: (%savedX2%. %savedY2%)
     SetTimer, RemoveTooltip, -2000
@@ -282,7 +280,6 @@ UpdateStatus:
     if (toggleV)
         statusText .= "V Pressing Active`n"
 
-    ; Разделитель
     statusText .= "`n"
 
     ; Заголовок для сохранённых пикселей
@@ -292,15 +289,11 @@ UpdateStatus:
     if (savedX2 != 0 && savedY2 != 0)
         statusText .= "Saved Pixel 2: (" savedX2 ", " savedY2 ") Color: " savedColor2 "`n"
 
-    ; Проверка записанных кликов
     if (clicks.MaxIndex() > 0)
         statusText .= "`nRecorded Clicks: " clicks.MaxIndex() "`n"
 
-    ; Если есть статус, показываем тултип
     if (statusText != "")
         Tooltip, %statusText%, 200, 30
     else
-        Tooltip  ; Если нет информации, скрыть тултип
+        Tooltip 
 return
-
-;work
