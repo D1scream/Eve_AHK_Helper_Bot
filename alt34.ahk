@@ -5,15 +5,15 @@ toggleF3F4 := false
 toggleRecording := false
 toggleClickReplay := false
 togglePixelCheck := false
-togglePixel2Check := false  ; Флаг для второй точки
+togglePixel2Check := false
 
 clicks := []
 savedX := 0  
 savedY := 0
 savedColor := 0
-savedX2 := 0  ; Координаты второй точки
+savedX2 := 0 
 savedY2 := 0
-savedColor2 := 0  ; Цвет второй точки
+savedColor2 := 0 
 
 percentThreshold := 0.30  ; Порог чувствительности цвета
 
