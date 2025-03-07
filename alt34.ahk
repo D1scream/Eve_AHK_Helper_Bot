@@ -77,37 +77,35 @@ CheckPixel:
         Tooltip, Pixel changed! Starting clicks...
         SetTimer, RemoveTooltip, -2000
         toggleClickReplay := true
-        SetTimer, ReplayClicks, 1000
+        SetTimer, DoOneClickRound, 1000
     }
 return
 
-ReplayClicks:
+DoOneClickRound:
     if (clicks.MaxIndex() > 0) {
         Loop, % clicks.MaxIndex() {
             clickX := clicks[A_Index][1]
             clickY := clicks[A_Index][2]
-            Tooltip, Click #%A_Index%: %clickX%, %clickY%
             MouseMove, %clickX%, %clickY%, 0
             Click, %clickX%, %clickY%
             Sleep, 500
         }
 
         SetTimer, RemoveTooltip, -2000
-        toggleClickReplay := false
-        SetTimer, ReplayClicks, Off  
 
     } else {
         Tooltip, No recorded clicks
         SetTimer, RemoveTooltip, -2000
         toggleClickReplay := false
-        SetTimer, ReplayClicks, Off  
+        SetTimer, DoOneClickRound, Off  
     }
 return
 
+	
+
 Numpad4::  
     if (clicks.MaxIndex() > 0) {
-        toggleClickReplay := true
-        Gosub, ReplayClicks
+        Gosub, DoOneClickRound
         Tooltip, Playing recorded clicks...
     } else {
         Tooltip, No recorded clicks
@@ -115,34 +113,32 @@ Numpad4::
     SetTimer, RemoveTooltip, -2000
 return
 
+
 Numpad5::  
     toggleClickReplay := false
     togglePixelCheck := false
-    SetTimer, ReplayClicks, Off
+    SetTimer, DoOneClickRound, Off
     SetTimer, CheckPixel, Off
     Tooltip, Click replay and pixel check disabled
     SetTimer, RemoveTooltip, -2000
 return
 
 
-
 Numpad6::  
-    toggleF3F4 := !toggleF3F4
-    if (toggleF3F4) {
-        SetTimer, PressKeys, 1000
-        Tooltip, F3-F4 enabled
+    if (clicks.MaxIndex() > 0) {
+		toggleClickReplay := !toggleClickReplay
+        if (toggleClickReplay) {
+            Tooltip, Playing recorded clicks...
+            SetTimer, DoOneClickRound, 100 
+        } else {
+            Tooltip, Click replay stopped.
+            SetTimer, DoOneClickRound, Off
+        }
     } else {
-        SetTimer, PressKeys, Off
-        Tooltip, F3-F4 disabled
+        Tooltip, No recorded clicks
+		toggleClickReplay=false
     }
     SetTimer, RemoveTooltip, -2000
-return
-
-
-PressKeys:
-    Send, {F3}  
-    Sleep, 500
-    Send, {F4}  
 return
 
 Numpad7::  
@@ -157,11 +153,28 @@ Numpad7::
     SetTimer, RemoveTooltip, -2000
 return
 
-
 PressV:
     Send, {v down}  
     Sleep, 50       
     Send, {v up}    
+return
+
+Numpad0::  
+    toggleF := !toggleF
+    if (toggleF) {
+        SetTimer, PressFKeys, 1000 
+        Tooltip, F4 and F3 enabled
+    } else {
+        SetTimer, PressFKeys, Off
+        Tooltip, F4 and F3 disabled
+    }
+    SetTimer, RemoveTooltip, -2000
+return
+
+PressFKeys:
+    Send, {F4}  
+    Sleep, 50
+    Send, {F3}  
 return
 
 toggleStatus := false
@@ -177,8 +190,6 @@ Numpad8::
     }
     SetTimer, RemoveTooltip, -2000
 return
-
-
 
 Numpad9::  ; Запуск проверки пеленгатора
     togglePixel2Check := !togglePixel2Check
@@ -288,9 +299,6 @@ UpdateStatus:
         statusText .= "Saved Pixel: (" savedX ", " savedY ") Color: " savedColor "`n"
     if (savedX2 != 0 && savedY2 != 0)
         statusText .= "Saved Pixel 2: (" savedX2 ", " savedY2 ") Color: " savedColor2 "`n"
-
-    if (clicks.MaxIndex() > 0)
-        statusText .= "`nRecorded Clicks: " clicks.MaxIndex() "`n"
 
     if (statusText != "")
         Tooltip, %statusText%, 200, 30
